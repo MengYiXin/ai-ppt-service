@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI PPT 大纲生成器 · 5 秒出大纲</title>
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --bg-card: #111111;
+      --bg-input: #161616;
+      --border: #1f1f1f;
+      --text: #e0e0e0;
+      --text-dim: #888;
+      --text-dimmer: #666;
+      --accent: #8b5cf6;
+      --accent-dim: #7c3aed;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --err: #ef4444;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+    .container { max-width: 1200px; margin: 0 auto; padding: 32px 20px; }
+    header { text-align: center; margin-bottom: 40px; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
+    .badge { display: inline-block; padding: 4px 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 100px; font-size: 12px; color: var(--text-dim); margin-bottom: 16px; }
+    h1 { font-size: 36px; font-weight: 700; margin-bottom: 8px; background: linear-gradient(135deg, #fff 0%, var(--accent) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .subtitle { color: var(--text-dim); font-size: 16px; }
+
+    .grid { display: grid; grid-template-columns: 1fr 1.4fr; gap: 20px; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+    .panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; }
+    .panel h2 { font-size: 18px; margin-bottom: 16px; }
+
+    .form-group { margin-bottom: 14px; }
+    label { display: block; font-size: 13px; color: var(--text-dim); margin-bottom: 6px; }
+    input, select, textarea {
+      width: 100%; padding: 10px 14px; background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); font-size: 14px; transition: all 0.15s; font-family: inherit;
+    }
+    textarea { min-height: 70px; resize: vertical; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+    .btn { padding: 12px 24px; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+    .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-dim)); color: white; width: 100%; }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(139, 92, 246, 0.3); }
+    .btn-secondary { background: var(--bg-input); color: var(--text); border: 1px solid var(--border); }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+    .scenario-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+    .pill { padding: 6px 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 100px; font-size: 12px; cursor: pointer; transition: all 0.15s; }
+    .pill:hover { border-color: var(--accent); }
+    .pill.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+    .slide-card { background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+    .slide-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .slide-num { display: inline-block; padding: 2px 8px; background: var(--accent); color: white; border-radius: 6px; font-size: 12px; font-weight: 600; }
+    .slide-type { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+    .slide-title { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+    .slide-bullets { padding-left: 20px; }
+    .slide-bullets li { font-size: 13px; color: var(--text-dim); margin-bottom: 4px; }
+    .slide-support { background: rgba(139, 92, 246, 0.1); border-left: 3px solid var(--accent); padding: 8px 12px; border-radius: 0 6px 6px 0; font-size: 12px; color: var(--text-dim); margin: 8px 0; }
+    .slide-notes { font-size: 12px; color: var(--text-dimmer); font-style: italic; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+
+    .design-rec { background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(34, 197, 94, 0.05)); border: 1px solid var(--accent); border-radius: 12px; padding: 16px; margin-top: 16px; }
+    .design-rec h3 { font-size: 14px; margin-bottom: 10px; color: var(--accent); }
+    .color-row { display: flex; gap: 8px; margin-bottom: 8px; }
+    .color-swatch { width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--border); }
+
+    .empty { color: var(--text-dimmer); text-align: center; padding: 60px 0; }
+    .loading { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--accent); border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; margin-left: 8px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    footer { text-align: center; padding: 40px 0 20px; color: var(--text-dimmer); font-size: 13px; border-top: 1px solid var(--border); margin-top: 40px; }
+    footer a { color: var(--text-dim); text-decoration: none; }
+    footer a:hover { color: var(--accent); }
+
+    .copy-btn { background: var(--bg-card); border: 1px solid var(--border); color: var(--text-dim); }
+    .copy-btn:hover { color: var(--accent); border-color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <span class="badge">⚡ AI 大纲生成器 · 5 秒出 PPT 结构</span>
+      <h1>AI PPT 大纲生成器</h1>
+      <p class="subtitle">输入主题 + 场景 + 页数，AI 立刻出大纲 · 5 个高频场景模板</p>
+    </header>
+
+    <div class="grid">
+      <!-- 左：输入 -->
+      <div class="panel">
+        <h2>📝 输入需求</h2>
+
+        <div class="form-group">
+          <label>场景（选 1 个）</label>
+          <div class="scenario-pills">
+            <div class="pill active" data-scenario="project">项目交付汇报</div>
+            <div class="pill" data-scenario="industry">行业分析报告</div>
+            <div class="pill" data-scenario="product">产品发布路演</div>
+            <div class="pill" data-scenario="annual">个人年终总结</div>
+            <div class="pill" data-scenario="marketing">营销方案提案</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>主题（必填）</label>
+          <input type="text" id="topic" placeholder="例如：XX 项目交付汇报 / 2026 行业趋势分析">
+        </div>
+
+        <div class="form-group">
+          <label>目标受众（可选）</label>
+          <input type="text" id="audience" placeholder="例如：公司高管 / 投资人 / 客户">
+        </div>
+
+        <div class="row">
+          <div class="form-group">
+            <label>页数</label>
+            <input type="number" id="pages" value="12" min="5" max="50">
+          </div>
+          <div class="form-group">
+            <label>风格</label>
+            <select id="style">
+              <option value="business">商务极简</option>
+              <option value="tech">科技感</option>
+              <option value="art">文艺清新</option>
+              <option value="china">国潮风</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>必须包含的元素（可选）</label>
+          <input type="text" id="must" placeholder="例如：必须含 3 个数据图表、客户证言、Q4 预测">
+        </div>
+
+        <div class="form-group">
+          <label>客户提供的素材（可选）</label>
+          <textarea id="materials" placeholder="例如：已有 3 张产品截图 + 1 份用户调研报告"></textarea>
+        </div>
+
+        <button class="btn btn-primary" onclick="generate()">生成大纲 <span id="loading"></span></button>
+
+        <div style="margin-top: 12px; text-align: center; font-size: 12px; color: var(--text-dimmer);">
+          生成后可直接复制 JSON / Markdown 到 ChatGPT / Kimi 继续填充内容
+        </div>
+      </div>
+
+      <!-- 右：输出 -->
+      <div class="panel">
+        <h2>
+          📋 大纲预览
+          <button class="btn btn-sm copy-btn" onclick="copyOutput()" style="float: right;">复制 JSON</button>
+          <button class="btn btn-sm copy-btn" onclick="copyMarkdown()" style="float: right; margin-right: 8px;">复制 Markdown</button>
+        </h2>
+
+        <div id="output">
+          <p class="empty">
+            👈 填写左侧表单，点击"生成大纲"
+            <br><br>
+            <span style="font-size: 12px;">5 个场景模板 · 4 套设计风格 · 支持二次编辑</span>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <p>AI PPT 大纲生成器 · 通用演示工具 · <a href="#">GitHub</a> · <a href="#">联系作者</a></p>
+      <p style="margin-top: 8px;">提示：实际下单由 AI + 人工设计师 2 小时完成 · <a href="#">闲鱼挂单</a></p>
+    </footer>
+  </div>
+
+  <script>
+    // 场景选择
+    document.querySelectorAll('.pill').forEach(p => {
+      p.addEventListener('click', () => {
+        document.querySelectorAll('.pill').forEach(x => x.classList.remove('active'));
+        p.classList.add('active');
+      });
+    });
+
+    // 场景模板
+    const SCENARIOS = {
+      project: {
+        name: '项目交付汇报',
+        outline: [
+          { type: 'cover', title: '封面：{项目名} 交付汇报' },
+          { type: 'agenda', title: '议程：背景/过程/成果/计划' },
+          { type: 'content', title: '项目背景与目标' },
+          { type: 'content', title: '实施过程与里程碑' },
+          { type: 'content', title: '关键成果（量化）' },
+          { type: 'content', title: '客户反馈与评价' },
+          { type: 'content', title: '经验总结与沉淀' },
+          { type: 'content', title: '后续 3 个月计划' },
+          { type: 'closing', title: '感谢 + 联系' }
+        ]
+      },
+      industry: {
+        name: '行业分析报告',
+        outline: [
+          { type: 'cover', title: '封面：{行业} {时间} 趋势报告' },
+          { type: 'agenda', title: '议程：概览/趋势/格局/机会' },
+          { type: 'content', title: '市场概览：规模与增长' },
+          { type: 'content', title: '宏观趋势（3-5 个）' },
+          { type: 'content', title: '玩家格局：饼图分析' },
+          { type: 'content', title: '机会点识别' },
+          { type: 'content', title: '风险提示' },
+          { type: 'closing', title: '核心结论 + 行动建议' }
+        ]
+      },
+      product: {
+        name: '产品发布路演',
+        outline: [
+          { type: 'cover', title: '封面：{产品名} 发布会' },
+          { type: 'agenda', title: '议程：市场/问题/方案/产品/商业/团队/愿景' },
+          { type: 'content', title: '市场：TAM/SAM/SOM' },
+          { type: 'content', title: '问题：用户痛点' },
+          { type: 'content', title: '方案：差异化优势' },
+          { type: 'content', title: '产品：核心功能展示' },
+          { type: 'content', title: '商业模式与营收预测' },
+          { type: 'content', title: '团队：核心成员' },
+          { type: 'content', title: '愿景：未来 3 年' },
+          { type: 'closing', title: 'Q&A + 联系方式' }
+        ]
+      },
+      annual: {
+        name: '个人年终总结',
+        outline: [
+          { type: 'cover', title: '封面：{年份} 年终总结' },
+          { type: 'agenda', title: '议程：业绩/成长/反思/计划' },
+          { type: 'content', title: '业绩：KPI 完成情况' },
+          { type: 'content', title: '重要项目回顾' },
+          { type: 'content', title: '技能与学习成长' },
+          { type: 'content', title: '反思：失败与教训' },
+          { type: 'content', title: '明年 OKR' },
+          { type: 'closing', title: '感谢与展望' }
+        ]
+      },
+      marketing: {
+        name: '营销方案提案',
+        outline: [
+          { type: 'cover', title: '封面：{客户} 营销方案' },
+          { type: 'agenda', title: '议程：洞察/策略/创意/媒介/预算/效果' },
+          { type: 'content', title: '消费者洞察' },
+          { type: 'content', title: '核心营销策略' },
+          { type: 'content', title: '3 个核心创意' },
+          { type: 'content', title: '媒介投放矩阵' },
+          { type: 'content', title: '分项预算' },
+          { type: 'content', title: 'KPI 预测' },
+          { type: 'closing', title: '签约呼吁' }
+        ]
+      }
+    };
+
+    // 风格配色
+    const STYLES = {
+      business: { name: '商务极简', colors: ['#1E40AF', '#F8FAFC', '#22C55E', '#0F172A'], fonts: '思源黑体 / Inter' },
+      tech: { name: '科技感', colors: ['#6366F1', '#0F172A', '#06B6D4', '#E2E8F0'], fonts: '苹方 / JetBrains Mono' },
+      art: { name: '文艺清新', colors: ['#D4A574', '#F5F0E8', '#A8B5A0', '#5C4A3A'], fonts: '思源宋体 / 苹方' },
+      china: { name: '国潮风', colors: ['#DC2626', '#FCD34D', '#1F2937', '#FEF3C7'], fonts: '方正清刻本悦宋 / 思源宋体' }
+    };
+
+    function generate() {
+      const topic = document.getElementById('topic').value.trim();
+      if (!topic) { alert('请填写主题'); return; }
+
+      const scenario = document.querySelector('.pill.active').dataset.scenario;
+      const audience = document.getElementById('audience').value.trim() || '未指定';
+      const pages = parseInt(document.getElementById('pages').value) || 12;
+      const style = document.getElementById('style').value;
+      const must = document.getElementById('must').value.trim() || '无';
+      const materials = document.getElementById('materials').value.trim() || '无';
+
+      document.getElementById('loading').innerHTML = '<span class="loading"></span>';
+
+      // 模拟 0.5s 加载（实际对接 LLM 时这里调用 API）
+      setTimeout(() => {
+        const sc = SCENARIOS[scenario];
+        const st = STYLES[style];
+        const outline = sc.outline;
+        const finalPages = Math.min(outline.length, pages);
+
+        const slides = outline.slice(0, finalPages).map((slide, i) => {
+          const slideNum = i + 1;
+          let bullets = [];
+          let support = '';
+          let notes = '';
+
+          if (slide.type === 'cover') {
+            bullets = [];
+            support = '副标题：' + topic;
+            notes = '封面页要简洁，Logo 居中';
+          } else if (slide.type === 'agenda') {
+            bullets = ['1. ' + topic, '2. 实施/分析/方案', '3. 关键成果/数据', '4. 后续计划'];
+            support = '议程页要 4-6 个章节';
+            notes = '议程是听众的"地图"，要清晰';
+          } else if (slide.type === 'content') {
+            bullets = [
+              '核心观点：' + (i + 1) + '. ...',
+              '数据/案例支撑：...',
+              '实施路径：...',
+              '关键结果：...'
+            ];
+            support = materials !== '无' ? '可引用：' + materials : '需客户提供数据';
+            notes = '每页不超过 50 字（除数据图表）';
+          } else if (slide.type === 'closing') {
+            bullets = ['核心结论（3 条）', '下一步行动', '联系方式'];
+            support = '结尾要呼吁行动';
+            notes = '避免"Thank you"的弱结尾';
+          }
+
+          return {
+            page: slideNum,
+            type: slide.type,
+            title: slide.title.replace('{项目名}', topic).replace('{行业}', topic).replace('{产品名}', topic).replace('{年份}', '2026').replace('{客户}', topic),
+            bullets: bullets,
+            support: support,
+            notes: notes
+          };
+        });
+
+        // 满足"必须包含"提示
+        if (must !== '无') {
+          const lastContent = slides[slides.length - 2];
+          if (lastContent && lastContent.type === 'content') {
+            lastContent.bullets.push('⭐ 必须包含：' + must);
+          }
+        }
+
+        const result = {
+          meta: {
+            scenario: sc.name,
+            topic: topic,
+            audience: audience,
+            total_pages: slides.length,
+            style: st.name,
+            generated_at: new Date().toISOString()
+          },
+          slides: slides,
+          design_recommendation: {
+            color_scheme: st.colors,
+            color_names: ['主色', '辅色', '强调色', '文字色'],
+            fonts: st.fonts,
+            layout_style: style,
+            tips: [
+              '主色用于标题 + 关键按钮',
+              '辅色用于大面积背景',
+              '强调色仅用于数据高亮 / 重要数字',
+              '正文使用文字色，避免纯黑或纯白'
+            ]
+          },
+          next_steps: [
+            '1. 把这份 JSON 复制到 ChatGPT/Kimi/Claude',
+            '2. 让 AI 按每页 bullet 填充具体内容',
+            '3. 导出 Markdown 给设计师',
+            '4. 设计师按配色方案美化（2-3 小时）'
+          ]
+        };
+
+        // 保存到全局（用于复制）
+        window._lastResult = result;
+
+        // 渲染 HTML
+        renderOutput(result);
+        document.getElementById('loading').innerHTML = '';
+      }, 500);
+    }
+
+    function renderOutput(result) {
+      const html = `
+        <div class="design-rec">
+          <h3>🎨 设计建议（${result.design_recommendation.layout_style} 风格）</h3>
+          <div class="color-row">
+            ${result.design_recommendation.color_scheme.map((c, i) => `
+              <div class="color-swatch" style="background: ${c};" title="${result.design_recommendation.color_names[i]}: ${c}"></div>
+            `).join('')}
+          </div>
+          <div style="font-size: 12px; color: var(--text-dim);">
+            字体：${result.design_recommendation.fonts}
+          </div>
+        </div>
+
+        <h3 style="margin: 20px 0 12px; font-size: 14px;">📑 ${result.slides.length} 页大纲</h3>
+
+        ${result.slides.map(s => `
+          <div class="slide-card">
+            <div class="slide-header">
+              <span class="slide-num">P${s.page}</span>
+              <span class="slide-type">${s.type}</span>
+            </div>
+            <div class="slide-title">${s.title}</div>
+            ${s.bullets.length > 0 ? `<ul class="slide-bullets">${s.bullets.map(b => `<li>${b}</li>`).join('')}</ul>` : ''}
+            ${s.support ? `<div class="slide-support">📊 ${s.support}</div>` : ''}
+            ${s.notes ? `<div class="slide-notes">💡 ${s.notes}</div>` : ''}
+          </div>
+        `).join('')}
+
+        <div class="design-rec" style="margin-top: 20px;">
+          <h3>🚀 下一步</h3>
+          ${result.next_steps.map(s => `<div style="font-size: 12px; color: var(--text-dim); margin: 4px 0;">${s}</div>`).join('')}
+        </div>
+      `;
+      document.getElementById('output').innerHTML = html;
+    }
+
+    function copyOutput() {
+      if (!window._lastResult) { alert('请先生成大纲'); return; }
+      const json = JSON.stringify(window._lastResult, null, 2);
+      navigator.clipboard.writeText(json).then(() => {
+        alert('✅ JSON 已复制到剪贴板');
+      });
+    }
+
+    function copyMarkdown() {
+      if (!window._lastResult) { alert('请先生成大纲'); return; }
+      const r = window._lastResult;
+      let md = `# ${r.meta.topic} - ${r.meta.scenario}（${r.meta.style}）\n\n`;
+      md += `> 受众：${r.meta.audience} | 页数：${r.meta.total_pages} | 生成时间：${r.meta.generated_at}\n\n`;
+      md += `## 🎨 设计建议\n\n`;
+      md += `- **配色**：${r.design_recommendation.color_scheme.join(' / ')}\n`;
+      md += `- **字体**：${r.design_recommendation.fonts}\n\n`;
+      md += `## 📑 大纲\n\n`;
+      r.slides.forEach(s => {
+        md += `### P${s.page} - ${s.title}\n`;
+        if (s.bullets.length > 0) {
+          s.bullets.forEach(b => md += `- ${b}\n`);
+        }
+        if (s.support) md += `\n📊 ${s.support}\n`;
+        if (s.notes) md += `\n💡 *${s.notes}*\n`;
+        md += `\n`;
+      });
+      md += `## 🚀 下一步\n\n`;
+      r.next_steps.forEach(s => md += `${s}\n`);
+
+      navigator.clipboard.writeText(md).then(() => {
+        alert('✅ Markdown 已复制到剪贴板');
+      });
+    }
+  </script>
+</body>
+</html>
